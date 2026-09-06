@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Video + Subtitle SRT/VTT</title>
+<style>
+body{font-family:Arial,sans-serif;background:#111;color:#fff;margin:0;padding:24px}
+h2{margin-top:0}
+input{margin:8px 0 16px;display:block}
+video{width:100%;max-width:1200px;background:#000;display:block}
+button{padding:10px 16px;margin-bottom:18px}
+</style>
+</head>
+<body>
+<h2>Chrome Video Player + Subtitle</h2>
+<label>Video MP4:</label>
+<input id="videoFile" type="file" accept="video/*">
+
+<label>Subtitle SRT / VTT:</label>
+<input id="subFile" type="file" accept=".srt,.vtt,text/vtt,application/x-subrip">
+
+<video id="player" controls>
+  Browser Anda tidak mendukung video HTML5.
+</video>
+
+<script>
+const video = document.getElementById('player');
+const videoInput = document.getElementById('videoFile');
+const subInput = document.getElementById('subFile');
+
+let videoURL, subURL;
+
+videoInput.addEventListener('change', () => {
+  if (!videoInput.files[0]) return;
+  if (videoURL) URL.revokeObjectURL(videoURL);
+  videoURL = URL.createObjectURL(videoInput.files[0]);
+  video.src = videoURL;
+  video.load();
+});
+
+subInput.addEventListener('change', async () => {
+  const file = subInput.files[0];
+  if (!file) return;
+
+  let text = await file.text();
+
+  // Convert SRT to WebVTT automatically
+  text = text.replace(/^\uFEFF/, '');
+  text = text.replace(/(\d{2}:\d{2}:\d{2}),(\d{3})/g, '$1.$2');
+  text = text.replace(/^\s*\d+\s*$/gm, '');
+  if (!/^WEBVTT/m.test(text.trim())) {
+    text = 'WEBVTT\n\n' + text.trim() + '\n';
+  }
+
+  if (subURL) URL.revokeObjectURL(subURL);
+  subURL = URL.createObjectURL(new Blob([text], {type:'text/vtt'}));
+
+  // Remove old subtitle tracks
+  [...video.querySelectorAll('track')].forEach(t => t.remove());
+
+  const track = document.createElement('track');
+  track.kind = 'subtitles';
+  track.label = 'Subtitle Indonesia';
+  track.srclang = 'id';
+  track.src = subURL;
+  track.default = true;
+  video.appendChild(track);
+
+  // Make sure the new track is showing
+  setTimeout(() => {
+    if (video.textTracks[0]) video.textTracks[0].mode = 'showing';
+  }, 100);
+});
+</script>
+</body>
+</html>
